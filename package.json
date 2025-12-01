@@ -1,0 +1,19 @@
+{
+  "name": "tap2eat-admin-scripts",
+  "version": "1.0.0",
+  "description": "Scripts for tap2eat admin panel including Firestore data seeding",
+  "main": "scripts/seed_firestore.js",
+  "scripts": {
+    "seed": "node scripts/seed_firestore.js"
+  },
+  "keywords": [
+    "firebase",
+    "firestore",
+    "seed"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "firebase-admin": "^12.0.0"
+  }
+}
