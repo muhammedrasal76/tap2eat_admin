@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 import '../../core/theme/colors.dart';
 import '../../core/constants/routes.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/orders_provider.dart';
 import '../../models/order_model.dart';
+import '../../widgets/badges/status_badge.dart';
+import '../../widgets/filters/order_filters_bar.dart';
+import '../../widgets/dialogs/order_details_dialog.dart';
 
 class CanteenDashboardScreen extends StatefulWidget {
   const CanteenDashboardScreen({super.key});
@@ -59,18 +61,40 @@ class _CanteenDashboardScreenState extends State<CanteenDashboardScreen> {
                               return Center(child: Text('Error: ${snapshot.error}'));
                             }
 
-                            final orders = snapshot.data ?? [];
+                            final orders = ordersProvider.orders;
 
-                            if (orders.isEmpty) {
-                              return _buildEmptyState();
-                            }
-
-                            return ListView.builder(
+                            return SingleChildScrollView(
                               padding: const EdgeInsets.all(24),
-                              itemCount: orders.length,
-                              itemBuilder: (context, index) {
-                                return _buildOrderCard(orders[index]);
-                              },
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  // Filters bar
+                                  const OrderFiltersBar(),
+                                  const SizedBox(height: 24),
+
+                                  // Orders list
+                                  if (orders.isEmpty)
+                                    _buildEmptyState()
+                                  else
+                                    Column(
+                                      children: [
+                                        // Order count
+                                        Padding(
+                                          padding: const EdgeInsets.only(bottom: 16),
+                                          child: Text(
+                                            '${orders.length} order${orders.length == 1 ? '' : 's'} found',
+                                            style: TextStyle(
+                                              color: AppColors.textSecondary,
+                                              fontSize: 14,
+                                            ),
+                                          ),
+                                        ),
+                                        // Order cards
+                                        ...orders.map((order) => _buildOrderCard(order)),
+                                      ],
+                                    ),
+                                ],
+                              ),
                             );
                           },
                         ),
@@ -183,17 +207,89 @@ class _CanteenDashboardScreenState extends State<CanteenDashboardScreen> {
   }
 
   Widget _buildHeader(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: const BoxDecoration(
-        border: Border(
-          bottom: BorderSide(color: AppColors.borderColor),
-        ),
-      ),
-      child: Text(
-        'Active Orders',
-        style: Theme.of(context).textTheme.displaySmall,
-      ),
+    return Consumer<OrdersProvider>(
+      builder: (context, provider, _) {
+        return Container(
+          padding: const EdgeInsets.all(24),
+          decoration: const BoxDecoration(
+            border: Border(
+              bottom: BorderSide(color: AppColors.borderColor),
+            ),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Row(
+                  children: [
+                    Text(
+                      'Active Orders',
+                      style: Theme.of(context).textTheme.displaySmall,
+                    ),
+                    if (provider.newOrderCount > 0) ...[
+                      const SizedBox(width: 12),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.error,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.notifications_active,
+                              size: 16,
+                              color: AppColors.onPrimary,
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              '${provider.newOrderCount} new',
+                              style: TextStyle(
+                                color: AppColors.onPrimary,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              // Sound toggle
+              IconButton(
+                onPressed: () => provider.toggleSound(),
+                icon: Icon(
+                  provider.soundEnabled
+                      ? Icons.volume_up
+                      : Icons.volume_off,
+                  color: provider.soundEnabled
+                      ? AppColors.primary
+                      : AppColors.textSecondary,
+                ),
+                tooltip: provider.soundEnabled
+                    ? 'Disable sound notifications'
+                    : 'Enable sound notifications',
+              ),
+              const SizedBox(width: 8),
+              // Mark orders as seen button
+              if (provider.newOrderCount > 0)
+                ElevatedButton.icon(
+                  onPressed: () => provider.markOrdersAsSeen(),
+                  icon: Icon(Icons.done_all, size: 18),
+                  label: Text('Mark as Seen'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: AppColors.onPrimary,
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -220,117 +316,183 @@ class _CanteenDashboardScreenState extends State<CanteenDashboardScreen> {
   }
 
   Widget _buildOrderCard(OrderModel order) {
-    final formatter = DateFormat('MMM dd, h:mm a');
-    final slotTime = order.fulfillmentSlot.toDate();
-
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Order #${order.id.substring(0, 8)}',
-                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                              fontWeight: FontWeight.w600,
-                            ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        formatter.format(slotTime),
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+      color: AppColors.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: AppColors.borderColor, width: 1),
+      ),
+      child: InkWell(
+        onTap: () {
+          showDialog(
+            context: context,
+            builder: (context) => OrderDetailsDialog(order: order),
+          );
+        },
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header row
+              Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Order #${order.id}',
+                          style: TextStyle(
+                            color: AppColors.textPrimary,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.access_time,
+                              size: 14,
                               color: AppColors.textSecondary,
                             ),
-                      ),
-                    ],
+                            const SizedBox(width: 6),
+                            Text(
+                              order.getFormattedFulfillmentSlot(),
+                              style: TextStyle(
+                                color: AppColors.textSecondary,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                _buildStatusChip(order.status),
-              ],
-            ),
-            const Divider(height: 24),
-            Text(
-              '${order.items.length} items • ₹${order.totalAmount.toStringAsFixed(2)}',
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-            const SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                if (order.status == 'pending')
-                  ElevatedButton.icon(
-                    onPressed: () => _updateStatus(order.id, 'preparing'),
-                    icon: const Icon(Icons.restaurant, size: 18),
-                    label: const Text('Start Preparing'),
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
+                  StatusBadge(status: order.status),
+                ],
+              ),
+
+              const SizedBox(height: 16),
+              Divider(color: AppColors.borderColor),
+              const SizedBox(height: 16),
+
+              // Order details
+              Row(
+                children: [
+                  // Items count
+                  Expanded(
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: AppColors.base,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Icon(
+                            Icons.restaurant_menu,
+                            size: 16,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '${order.items.length} Item${order.items.length == 1 ? '' : 's'}',
+                              style: TextStyle(
+                                color: AppColors.textPrimary,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            Text(
+                              order.fulfillmentType[0].toUpperCase() +
+                                  order.fulfillmentType.substring(1),
+                              style: TextStyle(
+                                color: AppColors.textSecondary,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // Total amount
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      '₹${order.totalAmount.toStringAsFixed(2)}',
+                      style: TextStyle(
+                        color: AppColors.primary,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                   ),
-                if (order.status == 'preparing')
-                  ElevatedButton.icon(
-                    onPressed: () => _updateStatus(order.id, 'ready'),
-                    icon: const Icon(Icons.check_circle, size: 18),
-                    label: const Text('Mark Ready'),
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
-                      ),
+                ],
+              ),
+
+              const SizedBox(height: 16),
+
+              // Action buttons
+              Row(
+                children: [
+                  // View details button
+                  OutlinedButton.icon(
+                    onPressed: () {
+                      showDialog(
+                        context: context,
+                        builder: (context) => OrderDetailsDialog(order: order),
+                      );
+                    },
+                    icon: Icon(Icons.visibility, size: 16),
+                    label: Text('View Details'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.primary,
+                      side: BorderSide(color: AppColors.primary),
                     ),
                   ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+                  const Spacer(),
 
-  Widget _buildStatusChip(String status) {
-    Color color;
-    String label;
-
-    switch (status) {
-      case 'pending':
-        color = AppColors.warning;
-        label = 'Pending';
-        break;
-      case 'preparing':
-        color = AppColors.info;
-        label = 'Preparing';
-        break;
-      case 'ready':
-        color = AppColors.success;
-        label = 'Ready';
-        break;
-      default:
-        color = AppColors.textSecondary;
-        label = status;
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: color.withAlpha(25),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: color,
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
+                  // Status action buttons
+                  if (order.status == 'pending')
+                    ElevatedButton.icon(
+                      onPressed: () => _updateStatus(order.id, 'preparing'),
+                      icon: const Icon(Icons.play_arrow, size: 18),
+                      label: const Text('Start Preparing'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: AppColors.onPrimary,
+                      ),
+                    ),
+                  if (order.status == 'preparing')
+                    ElevatedButton.icon(
+                      onPressed: () => _updateStatus(order.id, 'ready'),
+                      icon: const Icon(Icons.check, size: 18),
+                      label: const Text('Mark as Ready'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.success,
+                        foregroundColor: AppColors.onPrimary,
+                      ),
+                    ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );

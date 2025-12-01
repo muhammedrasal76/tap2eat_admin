@@ -1,4 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+import '../core/theme/colors.dart';
 
 class OrderModel {
   final String id;
@@ -51,20 +54,74 @@ class OrderModel {
     return OrderModel.fromMap(data, id: doc.id);
   }
 
-  OrderModel copyWith({String? status}) {
+  // Helper: Format fulfillment slot
+  String getFormattedFulfillmentSlot() {
+    final date = fulfillmentSlot.toDate();
+    return DateFormat('MMM dd, yyyy h:mm a').format(date);
+  }
+
+  // Helper: Get status color
+  Color getStatusColor() {
+    switch (status) {
+      case 'pending':
+        return AppColors.info;
+      case 'preparing':
+        return AppColors.primary;
+      case 'ready':
+        return AppColors.success;
+      case 'assigned':
+      case 'delivering':
+        return AppColors.warning;
+      case 'delivered':
+      case 'completed':
+        return AppColors.success;
+      case 'cancelled':
+        return AppColors.error;
+      default:
+        return AppColors.textSecondary;
+    }
+  }
+
+  // Helper: Get status display name
+  String getStatusDisplayName() {
+    return status[0].toUpperCase() + status.substring(1);
+  }
+
+  // Helper: Check if delivery order
+  bool get isDeliveryOrder => fulfillmentType == 'delivery';
+
+  // Helper: Check if has delivery assignment
+  bool get hasDeliveryAssignment =>
+      deliveryStudentId != null && deliveryStudentId!.isNotEmpty;
+
+  // Enhanced copyWith to support all fields
+  OrderModel copyWith({
+    String? id,
+    String? canteenId,
+    String? userId,
+    List<dynamic>? items,
+    double? totalAmount,
+    Timestamp? fulfillmentSlot,
+    String? fulfillmentType,
+    String? status,
+    String? deliveryStudentId,
+    double? deliveryFee,
+    Timestamp? createdAt,
+    Timestamp? updatedAt,
+  }) {
     return OrderModel(
-      id: id,
-      canteenId: canteenId,
-      userId: userId,
-      items: items,
-      totalAmount: totalAmount,
-      fulfillmentSlot: fulfillmentSlot,
-      fulfillmentType: fulfillmentType,
+      id: id ?? this.id,
+      canteenId: canteenId ?? this.canteenId,
+      userId: userId ?? this.userId,
+      items: items ?? this.items,
+      totalAmount: totalAmount ?? this.totalAmount,
+      fulfillmentSlot: fulfillmentSlot ?? this.fulfillmentSlot,
+      fulfillmentType: fulfillmentType ?? this.fulfillmentType,
       status: status ?? this.status,
-      deliveryStudentId: deliveryStudentId,
-      deliveryFee: deliveryFee,
-      createdAt: createdAt,
-      updatedAt: updatedAt,
+      deliveryStudentId: deliveryStudentId ?? this.deliveryStudentId,
+      deliveryFee: deliveryFee ?? this.deliveryFee,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
     );
   }
 }
