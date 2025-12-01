@@ -8,14 +8,33 @@ class AuthProvider extends ChangeNotifier {
   String? _userRole;
   String? _canteenId;
   bool _isLoading = false;
+  bool _isInitialized = false;
 
   bool get isAuthenticated => _user != null;
   String? get userRole => _userRole;
   String? get canteenId => _canteenId;
   bool get isLoading => _isLoading;
+  bool get isInitialized => _isInitialized;
   User? get user => _user;
 
   AuthProvider() {
+    _initializeAuth();
+  }
+
+  Future<void> _initializeAuth() async {
+    // Synchronously get current user first (no delay)
+    _user = _auth.currentUser;
+
+    if (_user != null) {
+      // Load role asynchronously from Firestore
+      await _loadUserRole();
+    }
+
+    // Mark initialization as complete
+    _isInitialized = true;
+    notifyListeners();
+
+    // Continue listening for auth state changes
     _auth.authStateChanges().listen(_onAuthStateChanged);
   }
 

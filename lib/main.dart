@@ -14,6 +14,7 @@ import 'screens/canteen_admin/dashboard_screen.dart';
 import 'screens/canteen_admin/menu_management_screen.dart';
 import 'screens/master_admin/dashboard_screen.dart' as master;
 import 'screens/shared/not_authorized_screen.dart';
+import 'screens/shared/splash_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -53,17 +54,27 @@ class Tap2EatAdminApp extends StatelessWidget {
 
   GoRouter _createRouter(AuthProvider authProvider) {
     return GoRouter(
-      initialLocation: Routes.login,
+      initialLocation: Routes.splash,
+      refreshListenable: authProvider,
       redirect: (context, state) {
+        final isInitialized = authProvider.isInitialized;
         final isLoggedIn = authProvider.isAuthenticated;
-        final isLoggingIn = state.matchedLocation == Routes.login;
+        final currentPath = state.matchedLocation;
 
-        if (!isLoggedIn && !isLoggingIn) {
-          return Routes.login;
+        // Phase 1: Show splash while initializing auth state
+        if (!isInitialized) {
+          return currentPath == Routes.splash ? null : Routes.splash;
         }
 
-        if (isLoggedIn && isLoggingIn) {
-          // Role-based redirect after login
+        // Phase 2: After initialization, handle authentication
+        if (!isLoggedIn) {
+          // Not logged in - redirect to login unless already there
+          return currentPath == Routes.login ? null : Routes.login;
+        }
+
+        // Phase 3: User is logged in - handle redirects from splash/login
+        if (currentPath == Routes.splash || currentPath == Routes.login) {
+          // Redirect from splash/login to role-specific dashboard
           if (authProvider.userRole == 'canteen_admin') {
             return Routes.canteenDashboard;
           } else if (authProvider.userRole == 'master_admin') {
@@ -73,9 +84,14 @@ class Tap2EatAdminApp extends StatelessWidget {
           }
         }
 
+        // Allow navigation to requested route
         return null;
       },
       routes: [
+        GoRoute(
+          path: Routes.splash,
+          builder: (context, state) => const SplashScreen(),
+        ),
         GoRoute(
           path: Routes.login,
           builder: (context, state) => const LoginScreen(),
