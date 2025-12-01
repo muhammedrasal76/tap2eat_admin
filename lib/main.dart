@@ -9,10 +9,12 @@ import 'core/constants/routes.dart';
 import 'providers/auth_provider.dart';
 import 'providers/orders_provider.dart';
 import 'providers/menu_provider.dart';
+import 'providers/break_slots_provider.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/canteen_admin/dashboard_screen.dart';
 import 'screens/canteen_admin/menu_management_screen.dart';
 import 'screens/master_admin/dashboard_screen.dart' as master;
+import 'screens/master_admin/break_slots_management_screen.dart';
 import 'screens/shared/not_authorized_screen.dart';
 import 'screens/shared/splash_screen.dart';
 
@@ -38,6 +40,7 @@ class Tap2EatAdminApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => OrdersProvider()),
         ChangeNotifierProvider(create: (_) => MenuProvider()),
+        ChangeNotifierProvider(create: (_) => BreakSlotsProvider()),
       ],
       child: Consumer<AuthProvider>(
         builder: (context, authProvider, _) {
@@ -107,6 +110,10 @@ class Tap2EatAdminApp extends StatelessWidget {
         GoRoute(
           path: Routes.masterDashboard,
           builder: (context, state) => const master.MasterDashboardScreen(),
+        ),
+        GoRoute(
+          path: Routes.masterBreakSlots,
+          builder: (context, state) => const BreakSlotsManagementScreen(),
         ),
         GoRoute(
           path: Routes.notAuthorized,

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:go_router/go_router.dart';
 import '../../core/theme/colors.dart';
+import '../../core/constants/routes.dart';
 import '../../providers/auth_provider.dart';
 
 class MasterDashboardScreen extends StatelessWidget {
@@ -77,19 +79,25 @@ class MasterDashboardScreen extends StatelessWidget {
         children: [
           _buildSidebarHeader(context),
           _buildSidebarMenuItem(
+            context,
             icon: Icons.dashboard,
             label: 'Dashboard',
             isActive: true,
           ),
           _buildSidebarMenuItem(
+            context,
             icon: Icons.schedule,
             label: 'Break Slots',
+            route: Routes.masterBreakSlots,
           ),
           _buildSidebarMenuItem(
+            context,
             icon: Icons.history,
             label: 'Audit Logs',
+            route: Routes.masterAuditLogs,
           ),
           _buildSidebarMenuItem(
+            context,
             icon: Icons.settings,
             label: 'System Settings',
           ),
@@ -127,10 +135,12 @@ class MasterDashboardScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildSidebarMenuItem({
+  Widget _buildSidebarMenuItem(
+    BuildContext context, {
     required IconData icon,
     required String label,
     bool isActive = false,
+    String? route,
   }) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -150,6 +160,7 @@ class MasterDashboardScreen extends StatelessWidget {
             fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
           ),
         ),
+        onTap: route != null ? () => context.go(route) : null,
       ),
     );
   }
