@@ -10,6 +10,8 @@ import 'providers/auth_provider.dart';
 import 'providers/orders_provider.dart';
 import 'providers/menu_provider.dart';
 import 'providers/break_slots_provider.dart';
+import 'providers/master_analytics_provider.dart';
+import 'providers/canteen_analytics_provider.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/canteen_admin/dashboard_screen.dart';
 import 'screens/canteen_admin/menu_management_screen.dart';
@@ -41,6 +43,8 @@ class Tap2EatAdminApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => OrdersProvider()),
         ChangeNotifierProvider(create: (_) => MenuProvider()),
         ChangeNotifierProvider(create: (_) => BreakSlotsProvider()),
+        ChangeNotifierProvider(create: (_) => MasterAnalyticsProvider()),
+        ChangeNotifierProvider(create: (_) => CanteenAnalyticsProvider()),
       ],
       child: Consumer<AuthProvider>(
         builder: (context, authProvider, _) {

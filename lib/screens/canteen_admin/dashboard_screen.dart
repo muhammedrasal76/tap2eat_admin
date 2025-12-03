@@ -5,10 +5,17 @@ import '../../core/theme/colors.dart';
 import '../../core/constants/routes.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/orders_provider.dart';
+import '../../providers/canteen_analytics_provider.dart';
 import '../../models/order_model.dart';
+import '../../models/analytics_time_period.dart';
 import '../../widgets/badges/status_badge.dart';
 import '../../widgets/filters/order_filters_bar.dart';
 import '../../widgets/dialogs/order_details_dialog.dart';
+import '../../widgets/analytics/stat_card.dart';
+import '../../widgets/analytics/time_period_selector.dart';
+import '../../widgets/analytics/chart_container.dart';
+import '../../widgets/analytics/peak_hours_chart.dart';
+import '../../widgets/analytics/popular_items_list.dart';
 
 class CanteenDashboardScreen extends StatefulWidget {
   const CanteenDashboardScreen({super.key});
@@ -18,6 +25,8 @@ class CanteenDashboardScreen extends StatefulWidget {
 }
 
 class _CanteenDashboardScreenState extends State<CanteenDashboardScreen> {
+  TimePeriod _selectedPeriod = TimePeriod.today;
+
   @override
   void initState() {
     super.initState();
@@ -25,6 +34,10 @@ class _CanteenDashboardScreenState extends State<CanteenDashboardScreen> {
       final canteenId = context.read<AuthProvider>().canteenId;
       if (canteenId != null) {
         context.read<OrdersProvider>().loadOrdersForCanteen(canteenId);
+        context.read<CanteenAnalyticsProvider>().loadAnalytics(
+              canteenId,
+              DateRange.today(),
+            );
       }
     });
   }
@@ -68,6 +81,156 @@ class _CanteenDashboardScreenState extends State<CanteenDashboardScreen> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
+                                  // Analytics Section
+                                  Consumer<CanteenAnalyticsProvider>(
+                                    builder: (context, analyticsProvider, _) {
+                                      final analyticsData = analyticsProvider.analyticsData;
+                                      final isLoading = analyticsProvider.isLoading;
+                                      final errorMessage = analyticsProvider.errorMessage;
+
+                                      return Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          // Analytics header with time period selector
+                                          Row(
+                                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                            children: [
+                                              Text(
+                                                'Analytics',
+                                                style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                                                      fontSize: 18,
+                                                    ),
+                                              ),
+                                              TimePeriodSelector(
+                                                selectedPeriod: _selectedPeriod,
+                                                onPeriodChanged: (range) {
+                                                  setState(() {
+                                                    _selectedPeriod = range.period;
+                                                  });
+                                                  analyticsProvider.loadAnalytics(canteenId, range);
+                                                },
+                                              ),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 20),
+
+                                          // Show loading or error states
+                                          if (errorMessage != null)
+                                            Center(
+                                              child: Padding(
+                                                padding: const EdgeInsets.all(20),
+                                                child: Text(
+                                                  errorMessage,
+                                                  style: TextStyle(color: AppColors.error),
+                                                ),
+                                              ),
+                                            )
+                                          else if (isLoading)
+                                            const Center(
+                                              child: Padding(
+                                                padding: EdgeInsets.all(20),
+                                                child: CircularProgressIndicator(),
+                                              ),
+                                            )
+                                          else if (analyticsData != null)
+                                            Column(
+                                              children: [
+                                                // Stat cards with week-over-week comparison
+                                                Row(
+                                                  children: [
+                                                    Expanded(
+                                                      child: StatCard(
+                                                        title: 'Orders Fulfilled',
+                                                        value: analyticsData.ordersFulfilled.toString(),
+                                                        icon: Icons.check_circle,
+                                                        color: AppColors.success,
+                                                        percentageChange: analyticsData.weekOverWeekOrdersChange,
+                                                      ),
+                                                    ),
+                                                    const SizedBox(width: 16),
+                                                    Expanded(
+                                                      child: StatCard(
+                                                        title: 'Total Revenue',
+                                                        value: '₹${analyticsData.totalRevenue.toStringAsFixed(0)}',
+                                                        icon: Icons.currency_rupee,
+                                                        color: AppColors.primary,
+                                                        percentageChange: analyticsData.weekOverWeekRevenueChange,
+                                                      ),
+                                                    ),
+                                                    const SizedBox(width: 16),
+                                                    Expanded(
+                                                      child: StatCard(
+                                                        title: 'Avg Order Value',
+                                                        value: '₹${analyticsData.averageOrderValue.toStringAsFixed(0)}',
+                                                        icon: Icons.trending_up,
+                                                        color: AppColors.info,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                                const SizedBox(height: 24),
+
+                                                // Charts row
+                                                Row(
+                                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                                  children: [
+                                                    Expanded(
+                                                      child: ChartContainer(
+                                                        title: 'Peak Hours',
+                                                        chart: PeakHoursChart(
+                                                          ordersByHour: analyticsData.ordersByHour,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    const SizedBox(width: 24),
+                                                    Expanded(
+                                                      child: Container(
+                                                        padding: const EdgeInsets.all(20),
+                                                        decoration: BoxDecoration(
+                                                          color: AppColors.surface,
+                                                          borderRadius: BorderRadius.circular(12),
+                                                          border: Border.all(color: AppColors.borderColor),
+                                                        ),
+                                                        child: Column(
+                                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                                          children: [
+                                                            Text(
+                                                              'Popular Items',
+                                                              style: TextStyle(
+                                                                color: AppColors.textPrimary,
+                                                                fontSize: 16,
+                                                                fontWeight: FontWeight.w600,
+                                                              ),
+                                                            ),
+                                                            const SizedBox(height: 20),
+                                                            PopularItemsList(
+                                                              items: analyticsData.popularItems,
+                                                            ),
+                                                          ],
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ],
+                                            ),
+                                          const SizedBox(height: 32),
+                                          const Divider(color: AppColors.borderColor),
+                                          const SizedBox(height: 24),
+                                        ],
+                                      );
+                                    },
+                                  ),
+
+                                  // Orders section header
+                                  Text(
+                                    'Active Orders',
+                                    style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                                          fontSize: 18,
+                                        ),
+                                  ),
+                                  const SizedBox(height: 20),
+
                                   // Filters bar
                                   const OrderFiltersBar(),
                                   const SizedBox(height: 24),

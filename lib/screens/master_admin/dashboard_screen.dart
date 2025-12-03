@@ -4,9 +4,33 @@ import 'package:go_router/go_router.dart';
 import '../../core/theme/colors.dart';
 import '../../core/constants/routes.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/master_analytics_provider.dart';
+import '../../models/analytics_time_period.dart';
+import '../../widgets/analytics/stat_card.dart';
+import '../../widgets/analytics/time_period_selector.dart';
+import '../../widgets/analytics/chart_container.dart';
+import '../../widgets/analytics/orders_over_time_chart.dart';
+import '../../widgets/analytics/order_type_pie_chart.dart';
+import '../../widgets/analytics/revenue_by_canteen_chart.dart';
 
-class MasterDashboardScreen extends StatelessWidget {
+class MasterDashboardScreen extends StatefulWidget {
   const MasterDashboardScreen({super.key});
+
+  @override
+  State<MasterDashboardScreen> createState() => _MasterDashboardScreenState();
+}
+
+class _MasterDashboardScreenState extends State<MasterDashboardScreen> {
+  TimePeriod _selectedPeriod = TimePeriod.today;
+
+  @override
+  void initState() {
+    super.initState();
+    // Load initial analytics data
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<MasterAnalyticsProvider>().loadAnalytics(DateRange.today());
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -23,44 +47,134 @@ class MasterDashboardScreen extends StatelessWidget {
               children: [
                 _buildHeader(context),
                 Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: GridView.count(
-                      crossAxisCount: 2,
-                      mainAxisSpacing: 16,
-                      crossAxisSpacing: 16,
-                      childAspectRatio: 2,
-                      children: [
-                        _buildStatCard(
-                          context,
-                          title: 'Total Orders',
-                          value: '0',
-                          icon: Icons.shopping_bag,
-                          color: AppColors.primary,
+                  child: Consumer<MasterAnalyticsProvider>(
+                    builder: (context, analyticsProvider, _) {
+                      final isLoading = analyticsProvider.isLoading;
+                      final analyticsData = analyticsProvider.analyticsData;
+                      final errorMessage = analyticsProvider.errorMessage;
+
+                      return SingleChildScrollView(
+                        padding: const EdgeInsets.all(24),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Time Period Selector
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  'Analytics Overview',
+                                  style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                                        fontSize: 20,
+                                      ),
+                                ),
+                                TimePeriodSelector(
+                                  selectedPeriod: _selectedPeriod,
+                                  onPeriodChanged: (range) {
+                                    setState(() {
+                                      _selectedPeriod = range.period;
+                                    });
+                                    analyticsProvider.loadAnalytics(range);
+                                  },
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 24),
+
+                            // Stat Cards
+                            if (errorMessage != null)
+                              Center(
+                                child: Padding(
+                                  padding: const EdgeInsets.all(40),
+                                  child: Text(
+                                    errorMessage,
+                                    style: TextStyle(color: AppColors.error),
+                                  ),
+                                ),
+                              )
+                            else if (isLoading)
+                              const Center(
+                                child: Padding(
+                                  padding: EdgeInsets.all(40),
+                                  child: CircularProgressIndicator(),
+                                ),
+                              )
+                            else if (analyticsData != null)
+                              Column(
+                                children: [
+                                  // Stat Cards Grid
+                                  GridView.count(
+                                    shrinkWrap: true,
+                                    physics: const NeverScrollableScrollPhysics(),
+                                    crossAxisCount: 4,
+                                    mainAxisSpacing: 16,
+                                    crossAxisSpacing: 16,
+                                    childAspectRatio: 1.8,
+                                    children: [
+                                      StatCard(
+                                        title: 'Total Orders',
+                                        value: analyticsData.totalOrders.toString(),
+                                        icon: Icons.shopping_bag,
+                                        color: AppColors.primary,
+                                      ),
+                                      StatCard(
+                                        title: 'Total Revenue',
+                                        value: '₹${analyticsData.totalRevenue.toStringAsFixed(2)}',
+                                        icon: Icons.currency_rupee,
+                                        color: AppColors.success,
+                                      ),
+                                      StatCard(
+                                        title: 'Active Canteens',
+                                        value: analyticsData.activeCanteens.toString(),
+                                        icon: Icons.restaurant,
+                                        color: AppColors.info,
+                                      ),
+                                      StatCard(
+                                        title: 'Delivery Students',
+                                        value: analyticsData.deliveryStudents.toString(),
+                                        icon: Icons.delivery_dining,
+                                        color: AppColors.warning,
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 32),
+
+                                  // Charts
+                                  ChartContainer(
+                                    title: 'Orders Over Time (Last 7 Days)',
+                                    chart: OrdersOverTimeChart(
+                                      ordersByDay: analyticsData.ordersByDay,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 24),
+
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: ChartContainer(
+                                          title: 'Order Type Distribution',
+                                          chart: OrderTypePieChart(
+                                            ordersByType: analyticsData.ordersByType,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 24),
+                                      Expanded(
+                                        child: ChartContainer(
+                                          title: 'Revenue by Canteen',
+                                          chart: RevenueByCanteenChart(
+                                            revenueByCanteen: analyticsData.revenueByCanteen,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                          ],
                         ),
-                        _buildStatCard(
-                          context,
-                          title: 'Active Canteens',
-                          value: '0',
-                          icon: Icons.restaurant,
-                          color: AppColors.info,
-                        ),
-                        _buildStatCard(
-                          context,
-                          title: 'Delivery Students',
-                          value: '0',
-                          icon: Icons.delivery_dining,
-                          color: AppColors.warning,
-                        ),
-                        _buildStatCard(
-                          context,
-                          title: 'Total Revenue',
-                          value: '₹0',
-                          icon: Icons.currency_rupee,
-                          color: AppColors.success,
-                        ),
-                      ],
-                    ),
+                      );
+                    },
                   ),
                 ),
               ],
@@ -194,46 +308,4 @@ class MasterDashboardScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildStatCard(
-    BuildContext context, {
-    required String title,
-    required String value,
-    required IconData icon,
-    required Color color,
-  }) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  title,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: AppColors.textSecondary,
-                      ),
-                ),
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: color.withAlpha(25),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Icon(icon, color: color, size: 20),
-                ),
-              ],
-            ),
-            Text(
-              value,
-              style: Theme.of(context).textTheme.displayMedium,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }
