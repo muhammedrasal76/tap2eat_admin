@@ -12,11 +12,14 @@ import 'providers/menu_provider.dart';
 import 'providers/break_slots_provider.dart';
 import 'providers/master_analytics_provider.dart';
 import 'providers/canteen_analytics_provider.dart';
+import 'providers/audit_logs_provider.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/canteen_admin/dashboard_screen.dart';
 import 'screens/canteen_admin/menu_management_screen.dart';
+import 'screens/canteen_admin/settings_screen.dart';
 import 'screens/master_admin/dashboard_screen.dart' as master;
 import 'screens/master_admin/break_slots_management_screen.dart';
+import 'screens/master_admin/audit_logs_screen.dart';
 import 'screens/shared/not_authorized_screen.dart';
 import 'screens/shared/splash_screen.dart';
 
@@ -45,6 +48,7 @@ class Tap2EatAdminApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => BreakSlotsProvider()),
         ChangeNotifierProvider(create: (_) => MasterAnalyticsProvider()),
         ChangeNotifierProvider(create: (_) => CanteenAnalyticsProvider()),
+        ChangeNotifierProvider(create: (_) => AuditLogsProvider()),
       ],
       child: Consumer<AuthProvider>(
         builder: (context, authProvider, _) {
@@ -112,12 +116,20 @@ class Tap2EatAdminApp extends StatelessWidget {
           builder: (context, state) => const MenuManagementScreen(),
         ),
         GoRoute(
+          path: Routes.canteenSettings,
+          builder: (context, state) => const CanteenSettingsScreen(),
+        ),
+        GoRoute(
           path: Routes.masterDashboard,
           builder: (context, state) => const master.MasterDashboardScreen(),
         ),
         GoRoute(
           path: Routes.masterBreakSlots,
           builder: (context, state) => const BreakSlotsManagementScreen(),
+        ),
+        GoRoute(
+          path: Routes.masterAuditLogs,
+          builder: (context, state) => const AuditLogsScreen(),
         ),
         GoRoute(
           path: Routes.notAuthorized,

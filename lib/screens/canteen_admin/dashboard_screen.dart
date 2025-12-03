@@ -546,7 +546,7 @@ class _CanteenDashboardScreenState extends State<CanteenDashboardScreen> {
               // Order details
               Row(
                 children: [
-                  // Items count
+                  // Items count and type
                   Expanded(
                     child: Row(
                       children: [
@@ -557,9 +557,13 @@ class _CanteenDashboardScreenState extends State<CanteenDashboardScreen> {
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Icon(
-                            Icons.restaurant_menu,
+                            order.isDeliveryOrder
+                                ? Icons.delivery_dining
+                                : Icons.restaurant_menu,
                             size: 16,
-                            color: AppColors.primary,
+                            color: order.isDeliveryOrder
+                                ? AppColors.warning
+                                : AppColors.primary,
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -573,19 +577,80 @@ class _CanteenDashboardScreenState extends State<CanteenDashboardScreen> {
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
-                            Text(
-                              order.fulfillmentType[0].toUpperCase() +
-                                  order.fulfillmentType.substring(1),
-                              style: TextStyle(
-                                color: AppColors.textSecondary,
-                                fontSize: 12,
-                              ),
+                            Row(
+                              children: [
+                                Text(
+                                  order.fulfillmentType[0].toUpperCase() +
+                                      order.fulfillmentType.substring(1),
+                                  style: TextStyle(
+                                    color: AppColors.textSecondary,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                                if (order.isDeliveryOrder && order.hasDeliveryAssignment) ...[
+                                  Text(
+                                    ' • ',
+                                    style: TextStyle(
+                                      color: AppColors.textSecondary,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                  Icon(
+                                    Icons.person,
+                                    size: 12,
+                                    color: AppColors.success,
+                                  ),
+                                  const SizedBox(width: 2),
+                                  Text(
+                                    'Assigned',
+                                    style: TextStyle(
+                                      color: AppColors.success,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ],
                             ),
                           ],
                         ),
                       ],
                     ),
                   ),
+
+                  // Delivery fee badge (if applicable)
+                  if (order.deliveryFee > 0) ...[
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.warning.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.delivery_dining,
+                            size: 12,
+                            color: AppColors.warning,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            '₹${order.deliveryFee.toStringAsFixed(0)}',
+                            style: TextStyle(
+                              color: AppColors.warning,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                  ],
 
                   // Total amount
                   Container(

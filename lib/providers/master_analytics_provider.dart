@@ -77,6 +77,13 @@ class MasterAnalyticsProvider extends ChangeNotifier {
     } catch (e) {
       _isLoading = false;
       _errorMessage = 'Failed to load analytics: $e';
+      // Log full error to console for Firebase index link
+      // ignore: avoid_print
+      print('=== MASTER ANALYTICS ERROR ===');
+      // ignore: avoid_print
+      print(e);
+      // ignore: avoid_print
+      print('==============================');
       notifyListeners();
     }
   }
